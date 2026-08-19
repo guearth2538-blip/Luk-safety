@@ -25,7 +25,6 @@
     rows.forEach((tr,index)=>{
       const report=reportRows[index];
       if(!report)return;
-      // Remove a previously appended dedicated delete column if one exists.
       const old=tr.querySelector('td [data-report-delete]')?.closest('td');
       if(old&&old!==tr.lastElementChild)old.remove();
 
@@ -92,4 +91,34 @@
   const observer=new MutationObserver(()=>queueMicrotask(ensureDeleteActions));
   observer.observe(body,{childList:true,subtree:true});
   ensureDeleteActions();
+})();
+
+// Keep the whole system on one entry URL: Admin logout returns to the main login.
+(function(){
+  const top=document.querySelector('.top');
+  const who=document.querySelector('#who');
+  if(!top||!who||document.querySelector('#adminLogout'))return;
+  const box=document.createElement('div');
+  box.style.display='flex';
+  box.style.alignItems='center';
+  box.style.gap='10px';
+  who.parentNode.insertBefore(box,who);
+  box.appendChild(who);
+  const btn=document.createElement('button');
+  btn.id='adminLogout';
+  btn.type='button';
+  btn.textContent='ออกจากระบบ';
+  btn.style.border='1px solid #ffffff66';
+  btn.style.background='#fff';
+  btn.style.color='#991b1b';
+  btn.style.borderRadius='9px';
+  btn.style.padding='8px 11px';
+  btn.style.fontWeight='800';
+  btn.style.cursor='pointer';
+  btn.onclick=async()=>{
+    btn.disabled=true;
+    btn.textContent='กำลังออก...';
+    try{await db.auth.signOut()}finally{location.replace('./')}
+  };
+  box.appendChild(btn);
 })();
