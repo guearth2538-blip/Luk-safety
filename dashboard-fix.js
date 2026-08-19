@@ -136,3 +136,69 @@
     });
   }
 })();
+
+/* Single-entry role router: one login URL, then route by Supabase profile role. */
+(() => {
+  let navigating = false;
+  const basePath = () => location.pathname.replace(/[^/]*$/, '');
+
+  async function routeByRole() {
+    if (navigating || typeof db === 'undefined' || !db.auth) return;
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      if (!session) return;
+      const { data: profile, error } = await db.from('profiles').select('role,is_active').eq('id', session.user.id).maybeSingle();
+      if (error) throw error;
+      if (!profile?.is_active) {
+        await db.auth.signOut();
+        const m = document.querySelector('#authMsg');
+        if (m) m.textContent = 'บัญชีนี้ถูกปิดใช้งาน';
+        return;
+      }
+
+      if (profile.role === 'admin') {
+        navigating = true;
+        location.replace(basePath() + 'admin-v2.html');
+        return;
+      }
+
+      if (profile.role === 'fireman') {
+        navigating = true;
+        const saved = sessionStorage.getItem('firemanReturn');
+        sessionStorage.removeItem('firemanReturn');
+        if (saved) {
+          try {
+            const u = new URL(saved, location.href);
+            if (u.origin === location.origin && u.pathname.endsWith('/fireman.html')) {
+              location.replace(u.href);
+              return;
+            }
+          } catch (_) {}
+        }
+        location.replace(basePath() + 'fireman.html');
+        return;
+      }
+
+      if (profile.role === 'supervisor') {
+        const role = document.querySelector('#userRoleLabel');
+        if (role) role.textContent = 'หัวหน้างาน';
+        return;
+      }
+
+      await db.auth.signOut();
+      const m = document.querySelector('#authMsg');
+      if (m) m.textContent = 'บัญชีนี้ไม่มีสิทธิ์เข้าใช้งานระบบ';
+    } catch (err) {
+      console.error('Role routing failed', err);
+    }
+  }
+
+  setTimeout(routeByRole, 50);
+  if (typeof db !== 'undefined' && db.auth) {
+    db.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        setTimeout(routeByRole, 0);
+      }
+    });
+  }
+})();
