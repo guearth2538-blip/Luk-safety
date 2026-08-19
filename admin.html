@@ -111,6 +111,7 @@
         </div>
         <div id="reportMsg" class="msg"></div>
         <p class="report-note">Excel จะมี 3 Sheet: ผลตรวจ, หัวข้อตรวจ และรูปภาพ โดยลิงก์รูปภาพจาก Storage จะเป็นลิงก์ชั่วคราว 7 วันเพื่อรักษาความเป็นส่วนตัวของรูปตรวจ</p>
+        <p class="report-note"><b>การลบ:</b> ปุ่ม 🗑️ ลบ ใช้ได้เฉพาะ Admin และจะลบผลตรวจ รายการตรวจย่อย ข้อมูลรูป และไฟล์รูปจริงใน Supabase แบบถาวร</p>
       </div>
 
       <div class="report-stats">
@@ -122,7 +123,7 @@
 
       <div class="card">
         <div class="table-wrap">
-          <table class="table" style="min-width:1100px">
+          <table class="table" style="min-width:1200px">
             <thead><tr><th>วัน/เวลา</th><th>จุดติดตั้ง</th><th>อุปกรณ์</th><th>ผู้ตรวจ</th><th>ผล</th><th>รายการชำรุด</th><th>หมายเหตุ</th><th>รูป</th></tr></thead>
             <tbody id="reportBody"><tr><td colspan="8" class="loading">กด “แสดงรายงาน” เพื่อโหลดข้อมูล</td></tr></tbody>
           </table>
@@ -136,5 +137,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="admin.js?v=20260819-1610"></script>
+<script src="admin-report-delete.js?v=20260819-1617"></script>
 </body>
 </html>
