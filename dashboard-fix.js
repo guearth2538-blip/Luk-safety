@@ -39,6 +39,13 @@
     });
     const search = document.querySelector('#dashboardSearch');
     if (search) search.addEventListener('input', () => setTimeout(applyCount, 50));
+
+    if (!document.querySelector('script[data-usability-enhancements]')) {
+      const script = document.createElement('script');
+      script.src = 'usability-enhancements.js';
+      script.dataset.usabilityEnhancements = 'true';
+      document.body.appendChild(script);
+    }
   });
 
   if (typeof db !== 'undefined' && db.auth) {
