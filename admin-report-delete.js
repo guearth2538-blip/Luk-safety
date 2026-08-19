@@ -4,35 +4,44 @@
   const body=document.querySelector('#reportBody');
   if(!body)return;
 
-  function ensureDeleteColumn(){
+  function ensureDeleteActions(){
     const table=body.closest('table');
     const headRow=table?.querySelector('thead tr');
-    if(headRow&&!headRow.querySelector('[data-delete-col]')){
-      const th=document.createElement('th');
-      th.textContent='จัดการ';
-      th.setAttribute('data-delete-col','1');
-      headRow.appendChild(th);
+    if(headRow){
+      const headers=[...headRow.querySelectorAll('th')];
+      if(headers.length){
+        headers[headers.length-1].textContent='รูป / จัดการ';
+      }
+      const extra=headRow.querySelector('[data-delete-col]');
+      if(extra)extra.remove();
     }
 
     const rows=[...body.querySelectorAll('tr')];
     if(!Array.isArray(reportRows)||!reportRows.length){
-      rows.forEach(tr=>{const td=tr.querySelector('td[colspan]');if(td)td.colSpan=9});
+      rows.forEach(tr=>{const td=tr.querySelector('td[colspan]');if(td)td.colSpan=8});
       return;
     }
 
     rows.forEach((tr,index)=>{
       const report=reportRows[index];
-      if(!report||tr.querySelector('[data-report-delete]'))return;
-      const td=document.createElement('td');
-      td.className='nowrap';
+      if(!report)return;
+      // Remove a previously appended dedicated delete column if one exists.
+      const old=tr.querySelector('td [data-report-delete]')?.closest('td');
+      if(old&&old!==tr.lastElementChild)old.remove();
+
+      const photoCell=tr.lastElementChild;
+      if(!photoCell||photoCell.querySelector('[data-report-delete]'))return;
       const btn=document.createElement('button');
       btn.type='button';
       btn.className='btn danger';
+      btn.style.display='block';
+      btn.style.marginTop='7px';
+      btn.style.padding='6px 9px';
+      btn.style.whiteSpace='nowrap';
       btn.textContent='🗑️ ลบ';
       btn.setAttribute('data-report-delete',report.id);
       btn.addEventListener('click',()=>deleteReport(report.id,btn));
-      td.appendChild(btn);
-      tr.appendChild(td);
+      photoCell.appendChild(btn);
     });
   }
 
@@ -63,18 +72,14 @@
     button.disabled=true;
     button.textContent='กำลังลบ...';
     try{
-      // Supabase recommends deleting Storage objects through the Storage API,
-      // not by deleting rows from storage.objects directly.
       await deleteStorageFiles(photos);
-
-      // inspection_items and inspection_photos rows are ON DELETE CASCADE.
       const result=await db.from('inspections').delete().eq('id',id).select('id');
       if(result.error)throw result.error;
       if(!result.data?.length)throw new Error('ไม่พบรายการที่ลบ หรือบัญชีนี้ไม่มีสิทธิ์ลบ');
 
       reportRows=reportRows.filter(x=>x.id!==id);
       renderReports();
-      ensureDeleteColumn();
+      ensureDeleteActions();
       if(typeof msg==='function')msg('#reportMsg','ลบรายงานและรูปภาพออกจาก Supabase เรียบร้อยแล้ว',true);
     }catch(err){
       console.error(err);
@@ -84,7 +89,7 @@
     }
   }
 
-  const observer=new MutationObserver(()=>queueMicrotask(ensureDeleteColumn));
+  const observer=new MutationObserver(()=>queueMicrotask(ensureDeleteActions));
   observer.observe(body,{childList:true,subtree:true});
-  ensureDeleteColumn();
+  ensureDeleteActions();
 })();
