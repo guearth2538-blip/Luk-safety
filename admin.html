@@ -111,7 +111,6 @@
         </div>
         <div id="reportMsg" class="msg"></div>
         <p class="report-note">Excel จะมี 3 Sheet: ผลตรวจ, หัวข้อตรวจ และรูปภาพ โดยลิงก์รูปภาพจาก Storage จะเป็นลิงก์ชั่วคราว 7 วันเพื่อรักษาความเป็นส่วนตัวของรูปตรวจ</p>
-        <p class="report-note"><b>การลบ:</b> ปุ่ม 🗑️ ลบ ใช้ได้เฉพาะ Admin และจะลบผลตรวจ รายการตรวจย่อย ข้อมูลรูป และไฟล์รูปจริงใน Supabase แบบถาวร</p>
       </div>
 
       <div class="report-stats">
@@ -124,8 +123,8 @@
       <div class="card">
         <div class="table-wrap">
           <table class="table" style="min-width:1200px">
-            <thead><tr><th>วัน/เวลา</th><th>จุดติดตั้ง</th><th>อุปกรณ์</th><th>ผู้ตรวจ</th><th>ผล</th><th>รายการชำรุด</th><th>หมายเหตุ</th><th>รูป</th></tr></thead>
-            <tbody id="reportBody"><tr><td colspan="8" class="loading">กด “แสดงรายงาน” เพื่อโหลดข้อมูล</td></tr></tbody>
+            <thead><tr><th>วัน/เวลา</th><th>จุดติดตั้ง</th><th>อุปกรณ์</th><th>ผู้ตรวจ</th><th>ผล</th><th>รายการชำรุด</th><th>หมายเหตุ</th><th>รูป</th><th>จัดการ</th></tr></thead>
+            <tbody id="reportBody"><tr><td colspan="9" class="loading">กด “แสดงรายงาน” เพื่อโหลดข้อมูล</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -136,7 +135,77 @@
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="modalhead"><h2 id="modalTitle">รายละเอียด</h2><button class="close" id="modalClose">×</button></div><div id="modalBody"></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-<script src="admin.js?v=20260819-1610"></script>
-<script src="admin-report-delete.js?v=20260819-1617"></script>
+<script src="admin.js?v=20260819-1621"></script>
+<script>
+(function(){
+  const body=document.querySelector('#reportBody');
+  if(!body)return;
+
+  function addDeleteButtons(){
+    const rows=[...body.querySelectorAll('tr')];
+    if(typeof reportRows==='undefined'||!Array.isArray(reportRows)||!reportRows.length){
+      rows.forEach(tr=>{const td=tr.querySelector('td[colspan]');if(td)td.colSpan=9});
+      return;
+    }
+    rows.forEach((tr,index)=>{
+      const report=reportRows[index];
+      if(!report||tr.querySelector('[data-report-delete]'))return;
+      const td=document.createElement('td');
+      td.className='nowrap';
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='btn danger';
+      btn.textContent='🗑️ ลบ';
+      btn.setAttribute('data-report-delete',report.id);
+      btn.onclick=()=>deleteReport(report.id,btn);
+      td.appendChild(btn);
+      tr.appendChild(td);
+    });
+  }
+
+  async function deleteStorageFiles(paths){
+    const unique=[...new Set(paths.filter(Boolean))];
+    for(let i=0;i<unique.length;i+=1000){
+      const r=await db.storage.from('inspection-photos').remove(unique.slice(i,i+1000));
+      if(r.error)throw r.error;
+    }
+  }
+
+  async function deleteReport(id,button){
+    const report=reportRows.find(x=>x.id===id);
+    if(!report)return;
+    const eq=report.equipment?.equipment_code||'ไม่ระบุรหัส';
+    const photos=(report.inspection_photos||[]).map(x=>x.storage_path).filter(Boolean);
+    const ok=confirm(`ต้องการลบรายงานนี้ถาวรหรือไม่?\n\nอุปกรณ์: ${eq}\nจุดติดตั้ง: ${locationText(report)}\nวันที่ตรวจ: ${displayDate(report.inspected_at)}\nผู้ตรวจ: ${inspectorName(report)}\nรูปภาพ: ${photos.length} รูป\n\nระบบจะลบข้อมูลรายงาน รายการตรวจย่อย และไฟล์รูปออกจาก Supabase ด้วย`);
+    if(!ok)return;
+    const typed=prompt('เพื่อป้องกันการลบข้อมูลจริงโดยไม่ตั้งใจ กรุณาพิมพ์คำว่า "ลบ" เพื่อยืนยัน');
+    if((typed||'').trim()!=='ลบ'){
+      msg('#reportMsg','ยกเลิกการลบ: คำยืนยันไม่ถูกต้อง');
+      return;
+    }
+    button.disabled=true;
+    button.textContent='กำลังลบ...';
+    try{
+      await deleteStorageFiles(photos);
+      const r=await db.from('inspections').delete().eq('id',id).select('id');
+      if(r.error)throw r.error;
+      if(!r.data?.length)throw new Error('ไม่พบรายการที่ลบ หรือบัญชีนี้ไม่มีสิทธิ์ลบ');
+      reportRows=reportRows.filter(x=>x.id!==id);
+      renderReports();
+      addDeleteButtons();
+      msg('#reportMsg','ลบรายงานและรูปภาพออกจาก Supabase เรียบร้อยแล้ว',true);
+    }catch(err){
+      console.error(err);
+      button.disabled=false;
+      button.textContent='🗑️ ลบ';
+      msg('#reportMsg','ลบไม่สำเร็จ: '+(err.message||'เกิดข้อผิดพลาด'));
+    }
+  }
+
+  const observer=new MutationObserver(()=>queueMicrotask(addDeleteButtons));
+  observer.observe(body,{childList:true,subtree:true});
+  addDeleteButtons();
+})();
+</script>
 </body>
 </html>
