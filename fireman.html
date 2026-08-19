@@ -2,7 +2,35 @@
 <html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#991b1b"><title>Fire Man Inspection</title><link rel="stylesheet" href="fireman.css"></head>
 <body><header><div><b>🔥 Fire Man Inspection</b><small>สแกน QR • ตรวจ • ถ่ายรูป • บันทึก</small></div><button id="logout" class="hidden">ออก</button></header><main>
 <section id="scanState" class="card state"><div class="big">▣</div><h1>กรุณาสแกน QR ที่หน้าจุดตรวจ</h1><p>เพื่อยืนยันว่าเจ้าหน้าที่เดินมาถึงจุดตรวจจริง ระบบไม่อนุญาตให้เลือกจุดตรวจหรือกดข้ามไปจุดอื่น</p></section>
-<section id="loginState" class="card hidden"><h2>เข้าสู่ระบบ Fire Man</h2><p id="loginLoc">ยืนยัน QR จุดตรวจ</p><form id="loginForm"><label>อีเมล<input id="email" type="email" required autocomplete="username"></label><label>รหัสผ่าน<input id="password" type="password" required autocomplete="current-password"></label><button class="primary">เข้าสู่ระบบ</button><p id="loginMsg" class="err"></p></form></section>
+<section id="loginState" class="card hidden"><h2>กำลังพากลับหน้าเข้าสู่ระบบ</h2><p id="loginLoc">ระบบใช้ลิงก์เข้าสู่ระบบหลักเพียงลิงก์เดียว</p><form id="loginForm"><label>อีเมล<input id="email" type="email" required autocomplete="username"></label><label>รหัสผ่าน<input id="password" type="password" required autocomplete="current-password"></label><button class="primary">เข้าสู่ระบบ</button><p id="loginMsg" class="err"></p></form></section>
 <section id="app" class="hidden"><div class="card location"><span id="locCode" class="badge"></span><h1 id="locName"></h1><p><b>ชั้น:</b> <span id="floor"></span> <span id="building"></span></p><p id="when"></p></div><div class="card"><label>ชื่อผู้ตรวจหน้างาน<select id="inspector"><option value="">เลือกชื่อผู้ตรวจ</option></select></label></div><form id="form"><div id="equipment"></div><div class="card"><h2>📷 รูปภาพการตรวจ</h2><label class="photo"><input id="photos" type="file" accept="image/*" capture="environment" multiple><span>📸</span><b>ถ่ายรูป / เลือกรูป</b></label><div id="preview"></div></div><button id="save" class="primary save" type="submit">💾 บันทึกผลการตรวจ</button></form></section>
 <section id="done" class="card state hidden"><div class="big">✅</div><h1>บันทึกเรียบร้อย</h1><p>กรุณาเดินไปยังจุดตรวจถัดไป แล้วสแกน QR ที่ติดอยู่ ณ จุดนั้น</p><p><b>ไม่สามารถเลือกจุดตรวจจากหน้านี้ได้</b></p></section><div id="toast"></div></main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="fireman.js"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="fireman.js?v=20260819-1645"></script>
+<script>
+(async()=>{
+  try{
+    const btn=document.querySelector('#logout');
+    const {data:{session}}=await db.auth.getSession();
+    if(!session){
+      if(location.search.includes('qr='))sessionStorage.setItem('firemanReturn',location.href);
+      location.replace('./');
+      return;
+    }
+    const {data:p,error}=await db.from('profiles').select('role,is_active').eq('id',session.user.id).maybeSingle();
+    if(error||!p?.is_active||p.role!=='fireman'){
+      await db.auth.signOut();
+      location.replace('./');
+      return;
+    }
+    btn.classList.remove('hidden');
+    btn.onclick=async()=>{
+      btn.disabled=true;
+      sessionStorage.removeItem('firemanReturn');
+      try{await db.auth.signOut()}finally{location.replace('./')}
+    };
+  }catch(err){
+    console.error('Fireman single-entry check failed',err);
+    location.replace('./');
+  }
+})();
+</script></body></html>
