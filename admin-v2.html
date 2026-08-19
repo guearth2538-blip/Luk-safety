@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ผู้ดูแลระบบ v2 | Fire Safety Inspection</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f7fb;color:#111827}
+    .top{background:#991b1b;color:#fff;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;gap:15px}
+    .top h1{margin:0;font-size:21px}.top small{opacity:.85}.version{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;background:#fff;color:#991b1b;font-size:12px;font-weight:800}
+    .wrap{max-width:1250px;margin:24px auto;padding:0 16px}
+    .notice{padding:14px 16px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;margin-bottom:18px}
+    .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+    .tabs button,.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}
+    .tabs button{background:#e5e7eb}.tabs button.active,.btn.primary{background:#b91c1c;color:#fff}
+    .btn.secondary{background:#e5e7eb}.btn.danger{background:#fee2e2;color:#991b1b}.btn.success{background:#166534;color:#fff}.btn:disabled{opacity:.55;cursor:not-allowed}
+    .card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 4px 18px #0000000b;margin-bottom:18px}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.grid .wide{grid-column:span 2}
+    .field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:9px;font:inherit}.field textarea{min-height:80px;resize:vertical}
+    .actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.table-wrap{overflow:auto}.search{display:flex;gap:10px;margin-bottom:12px}.search input{flex:1;padding:11px;border:1px solid #d1d5db;border-radius:9px}
+    .table{width:100%;border-collapse:collapse;min-width:800px}.table th,.table td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px;vertical-align:top}.table th{background:#f9fafb}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700;background:#dcfce7;color:#166534}.badge.off,.badge.bad{background:#fee2e2;color:#991b1b}
+    .hidden{display:none!important}.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}.modalbox{background:#fff;width:min(800px,100%);max-height:90vh;overflow:auto;border-radius:18px;padding:20px}.modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.close{border:0;background:#eee;border-radius:50%;width:34px;height:34px;font-size:20px;cursor:pointer}
+    .msg{margin-top:10px;min-height:20px;color:#b91c1c;font-weight:600}.loading{text-align:center;padding:30px;color:#6b7280}
+    .report-filters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end}.report-filters .field input,.report-filters .field select{background:#fff}
+    .report-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}.stat{border:1px solid #e5e7eb;border-radius:14px;padding:14px;background:#fafafa}.stat small{display:block;color:#6b7280;font-weight:700}.stat b{font-size:24px;display:block;margin-top:3px}.stat.bad b{color:#b91c1c}.stat.good b{color:#166534}
+    .report-note{font-size:13px;color:#6b7280;margin:8px 0 0}.nowrap{white-space:nowrap}.bad-list{color:#991b1b;font-weight:600}
+    @media(max-width:900px){.report-filters,.report-stats{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:800px){.grid{grid-template-columns:1fr}.grid .wide{grid-column:auto}.top{padding:15px}.wrap{margin:15px auto}.card{padding:15px}.search{flex-direction:column}}
+    @media(max-width:560px){.report-filters,.report-stats{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header class="top"><div><h1>⚙️ จัดการข้อมูลระบบ <span class="version">Admin v2</span></h1><small>Fire Safety Inspection — ผู้ดูแลระบบ</small></div><div id="who">กำลังตรวจสอบสิทธิ์...</div></header>
+<main class="wrap">
+  <div id="access" class="notice">กำลังตรวจสอบสิทธิ์ผู้ดูแล...</div>
+  <div id="panel" class="hidden">
+    <div class="tabs"><button class="active" data-tab="locations">📍 จุดติดตั้ง</button><button data-tab="equipment">🧯 อุปกรณ์</button><button data-tab="reports">📊 รายงานผลตรวจ</button></div>
+
+    <section id="locationsTab" class="tab">
+      <div class="card"><h2>เพิ่ม / แก้ไขจุดติดตั้ง</h2><form id="locationForm"><input type="hidden" id="locId"><div class="grid">
+        <div class="field"><label>รหัสจุดติดตั้ง</label><input id="locCode" placeholder="เช่น LOC-001"></div><div class="field wide"><label>ชื่อจุดติดตั้ง *</label><input id="locName" required placeholder="เช่น โถงทางเดินทิศเหนือ"></div><div class="field"><label>ชั้น *</label><input id="locFloor" required placeholder="เช่น ชั้น 1"></div><div class="field"><label>อาคาร</label><input id="locBuilding"></div><div class="field"><label>โซน</label><input id="locZone"></div><div class="field wide"><label>รายละเอียด</label><textarea id="locDesc"></textarea></div>
+      </div><div class="actions"><button class="btn primary" type="submit">💾 บันทึกจุดติดตั้ง</button><button class="btn secondary" type="button" id="locReset">ล้างฟอร์ม</button></div><div id="locMsg" class="msg"></div></form></div>
+      <div class="card"><div class="search"><input id="locSearch" placeholder="🔍 ค้นหาจุดติดตั้ง / รหัส / ชั้น"></div><div class="table-wrap"><table class="table"><thead><tr><th>รหัส</th><th>จุดติดตั้ง</th><th>ชั้น</th><th>อาคาร</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="locBody"></tbody></table></div></div>
+    </section>
+
+    <section id="equipmentTab" class="tab hidden">
+      <div class="card"><h2>เพิ่ม / แก้ไขอุปกรณ์</h2><form id="equipmentForm"><input type="hidden" id="eqId"><div class="grid">
+        <div class="field"><label>รหัสอุปกรณ์ *</label><input id="eqCode" required placeholder="เช่น FPS - FHC-001"></div><div class="field"><label>ประเภทอุปกรณ์ *</label><select id="eqType" required><option value="cabinet">ตู้ดับเพลิง</option><option value="extinguisher">ถังดับเพลิง</option></select></div><div class="field"><label>จุดติดตั้ง *</label><select id="eqLocation" required></select></div><div class="field"><label>ประเภทถัง</label><select id="eqExt"><option value="">ไม่ใช่ถัง / ไม่ระบุ</option><option value="dry_chemical">เคมีแห้ง</option><option value="co2">CO2</option><option value="fire_ade">Fire Ade</option><option value="avd">AVD</option><option value="bf2000">BF2000</option></select></div><div class="field"><label>ขนาด (lbs)</label><input id="eqSize" type="number" min="0" step="0.1"></div><div class="field"><label>ยี่ห้อ</label><input id="eqBrand"></div><div class="field"><label>รุ่น</label><input id="eqModel"></div><div class="field"><label>Serial Number</label><input id="eqSerial"></div><div class="field"><label>วันที่ติดตั้ง</label><input id="eqInstall" type="date"></div><div class="field wide"><label>ชื่อ/รายละเอียดอุปกรณ์</label><input id="eqLabel" placeholder="เช่น ตู้ดับเพลิง (มีถัง CO2 ในตู้)"></div>
+      </div><div class="actions"><button class="btn primary" type="submit">💾 บันทึกอุปกรณ์</button><button class="btn secondary" type="button" id="eqReset">ล้างฟอร์ม</button></div><div id="eqMsg" class="msg"></div></form></div>
+      <div class="card"><div class="search"><input id="eqSearch" placeholder="🔍 ค้นหารหัส / จุดติดตั้ง / ประเภท"><select id="eqKind"><option value="all">ทุกประเภท</option><option value="cabinet">ตู้</option><option value="extinguisher">ถัง</option></select></div><div class="table-wrap"><table class="table"><thead><tr><th>รหัส</th><th>ประเภท</th><th>จุดติดตั้ง</th><th>ชนิดถัง</th><th>ขนาด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="eqBody"></tbody></table></div></div>
+    </section>
+
+    <section id="reportsTab" class="tab hidden">
+      <div class="card"><h2>📊 รายงานผลการตรวจ</h2><div class="report-filters">
+        <div class="field"><label>ตั้งแต่วันที่</label><input id="reportFrom" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="reportTo" type="date"></div><div class="field"><label>ผลการตรวจ</label><select id="reportStatus"><option value="all">ทั้งหมด</option><option value="good">ปกติ</option><option value="bad">ชำรุด</option></select></div><div class="field"><label>ผู้ตรวจ</label><input id="reportInspector" placeholder="เช่น M1 / S2 / ชื่อผู้ตรวจ"></div>
+      </div><div class="actions"><button class="btn primary" type="button" id="reportRefresh">🔎 แสดงรายงาน</button><button class="btn success" type="button" id="reportExport">📥 ดาวน์โหลด Excel</button></div><div id="reportMsg" class="msg"></div><p class="report-note">Excel จะมี 3 Sheet: ผลตรวจ, หัวข้อตรวจ และรูปภาพ โดยลิงก์รูปภาพจาก Storage จะเป็นลิงก์ชั่วคราว 7 วันเพื่อรักษาความเป็นส่วนตัวของรูปตรวจ</p><p class="report-note"><b>Admin v2:</b> ปุ่มลบจะแสดงใต้จำนวนรูปในคอลัมน์ “รูป / จัดการ” และจะลบข้อมูลพร้อมไฟล์รูปใน Supabase แบบถาวร</p></div>
+      <div class="report-stats"><div class="stat"><small>รายการตรวจทั้งหมด</small><b id="statTotal">0</b></div><div class="stat good"><small>ปกติ</small><b id="statGood">0</b></div><div class="stat bad"><small>ชำรุด</small><b id="statBad">0</b></div><div class="stat"><small>รูปภาพ</small><b id="statPhotos">0</b></div></div>
+      <div class="card"><div class="table-wrap"><table class="table" style="min-width:1100px"><thead><tr><th>วัน/เวลา</th><th>จุดติดตั้ง</th><th>อุปกรณ์</th><th>ผู้ตรวจ</th><th>ผล</th><th>รายการชำรุด</th><th>หมายเหตุ</th><th>รูป / จัดการ</th></tr></thead><tbody id="reportBody"><tr><td colspan="8" class="loading">กด “แสดงรายงาน” เพื่อโหลดข้อมูล</td></tr></tbody></table></div></div>
+    </section>
+  </div>
+</main>
+<div id="modal" class="modal hidden"><div class="modalbox"><div class="modalhead"><h2 id="modalTitle">รายละเอียด</h2><button class="close" id="modalClose">×</button></div><div id="modalBody"></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="admin.js?v=20260819-1635"></script>
+<script src="admin-report-delete.js?v=20260819-1635"></script>
+</body>
+</html>
