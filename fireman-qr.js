@@ -1,0 +1,9 @@
+const SUPABASE_URL='https://yrhjklnxjchfxbcpopfd.supabase.co';
+const SUPABASE_KEY='sb_publishable__SxBsu9fKpxjS7YPaAyTqA_lqwZW62K';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const grid=document.querySelector('#grid'),q=document.querySelector('#q'); let locations=[];
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function urlFor(code){return new URL(`fireman.html?loc=${encodeURIComponent(code)}`,location.href).href}
+function render(){const term=q.value.trim().toLowerCase();const rows=locations.filter(x=>!term||`${x.location_code} ${x.location_name} ${x.floor||''} ${x.building||''}`.toLowerCase().includes(term));grid.innerHTML=rows.map((x,i)=>`<section class="card"><div class="code">${esc(x.location_code)}</div><div class="name">${esc(x.location_name)}</div><div class="meta">${esc(x.floor||'-')}${x.building?' • '+esc(x.building):''}</div><div class="qr" id="qr-${i}"></div><a class="open" href="fireman.html?loc=${encodeURIComponent(x.location_code)}">เปิดจุดตรวจ</a></section>`).join('')||'<div class="empty">ไม่พบจุดติดตั้ง</div>';rows.forEach((x,i)=>new QRCode(document.getElementById(`qr-${i}`),{text:urlFor(x.location_code),width:150,height:150,correctLevel:QRCode.CorrectLevel.M}))}
+async function boot(){const {data,error}=await db.from('locations').select('location_code,location_name,floor,building').eq('is_active',true).order('location_code');if(error){grid.innerHTML='<div class="empty">โหลดข้อมูลไม่สำเร็จ</div>';console.error(error);return}locations=data||[];render()}
+q.addEventListener('input',render);boot();
