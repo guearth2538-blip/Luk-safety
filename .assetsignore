@@ -1,0 +1,19 @@
+# Deny everything by default, then allow only the web files required at runtime.
+*
+
+!index.html
+!style.css
+!app.js
+!dashboard-fix.js
+!usability-enhancements.js
+
+!admin-v2.html
+!admin.html
+!admin.js
+!admin-report-delete.js
+
+!fireman.html
+!fireman.css
+!fireman.js
+!fireman-qr.html
+!fireman-qr.js
