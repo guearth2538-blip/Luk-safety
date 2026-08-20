@@ -122,3 +122,161 @@
   };
   box.appendChild(btn);
 })();
+
+// Secure user management. Privileged Auth operations happen in the admin-users Edge Function.
+(function(){
+  const tabs=document.querySelector('.tabs');
+  const panel=document.querySelector('#panel');
+  if(!tabs||!panel||document.querySelector('#usersTab'))return;
+
+  let users=[];
+  let loaded=false;
+  const roleText={admin:'Admin',supervisor:'หัวหน้างาน',fireman:'Fireman'};
+  const escUser=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+  const tab=document.createElement('button');
+  tab.type='button';
+  tab.dataset.tab='users';
+  tab.textContent='👥 จัดการผู้ใช้งาน';
+  tabs.appendChild(tab);
+
+  const section=document.createElement('section');
+  section.id='usersTab';
+  section.className='tab hidden';
+  section.innerHTML=`
+    <div class="card">
+      <h2>👥 จัดการผู้ใช้งาน</h2>
+      <p class="report-note">สร้างบัญชี เปิด/ปิดใช้งาน และกำหนดสิทธิ์จากหน้านี้ได้โดยตรง • งาน Auth ฝั่งผู้ดูแลทำผ่าน Supabase Edge Function</p>
+      <form id="userCreateForm">
+        <div class="grid">
+          <div class="field"><label>ชื่อผู้ใช้งาน *</label><input id="newUserName" required placeholder="เช่น สมชาย ใจดี"></div>
+          <div class="field"><label>Email *</label><input id="newUserEmail" type="email" required placeholder="name@example.com"></div>
+          <div class="field"><label>รหัสผ่านเริ่มต้น *</label><input id="newUserPassword" type="password" minlength="8" required placeholder="อย่างน้อย 8 ตัวอักษร"></div>
+          <div class="field"><label>สิทธิ์ *</label><select id="newUserRole"><option value="fireman">Fireman</option><option value="supervisor">หัวหน้างาน</option><option value="admin">Admin</option></select></div>
+        </div>
+        <div class="actions"><button class="btn primary" id="createUserBtn" type="submit">＋ สร้างบัญชี</button></div>
+        <div id="userMsg" class="msg"></div>
+      </form>
+    </div>
+    <div class="card">
+      <div class="search"><input id="userSearch" placeholder="🔍 ค้นหาชื่อ / Email / Role"><button class="btn secondary" id="reloadUsers" type="button">↻ โหลดใหม่</button></div>
+      <div class="table-wrap"><table class="table" style="min-width:1050px"><thead><tr><th>ชื่อ</th><th>Email</th><th>สิทธิ์</th><th>สถานะ</th><th>เข้าใช้ล่าสุด</th><th>จัดการ</th></tr></thead><tbody id="userBody"><tr><td colspan="6" class="loading">กดเมนู “จัดการผู้ใช้งาน” เพื่อโหลดข้อมูล</td></tr></tbody></table></div>
+    </div>`;
+  panel.appendChild(section);
+
+  function userMsg(text,ok=false){
+    const el=document.querySelector('#userMsg');
+    if(!el)return;
+    el.textContent=text;
+    el.style.color=ok?'#166534':'#b91c1c';
+  }
+
+  async function callAdminUsers(payload){
+    const r=await db.functions.invoke('admin-users',{body:payload});
+    if(r.error)throw r.error;
+    if(r.data?.error)throw new Error(r.data.error);
+    return r.data||{};
+  }
+
+  function dateText(v){
+    if(!v)return '—';
+    try{return new Date(v).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}catch(_){return '—'}
+  }
+
+  function filteredUsers(){
+    const q=(document.querySelector('#userSearch')?.value||'').trim().toLowerCase();
+    if(!q)return users;
+    return users.filter(u=>[u.full_name,u.email,u.role,roleText[u.role]].join(' ').toLowerCase().includes(q));
+  }
+
+  function renderUsers(){
+    const body=document.querySelector('#userBody');
+    if(!body)return;
+    const list=filteredUsers();
+    body.innerHTML=list.map(u=>{
+      const self=u.is_current;
+      return `<tr data-user-row="${u.id}">
+        <td><input data-user-name value="${escUser(u.full_name)}" style="min-width:180px;padding:9px;border:1px solid #d1d5db;border-radius:8px"><br>${self?'<small style="color:#991b1b;font-weight:700">บัญชีที่กำลังใช้งาน</small>':''}</td>
+        <td>${escUser(u.email||'—')}</td>
+        <td><select data-user-role ${self?'disabled':''} style="padding:9px;border:1px solid #d1d5db;border-radius:8px"><option value="fireman" ${u.role==='fireman'?'selected':''}>Fireman</option><option value="supervisor" ${u.role==='supervisor'?'selected':''}>หัวหน้างาน</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></td>
+        <td><label style="display:flex;align-items:center;gap:7px;white-space:nowrap"><input data-user-active type="checkbox" ${u.is_active?'checked':''} ${self?'disabled':''}> ${u.is_active?'<span class="badge">ใช้งาน</span>':'<span class="badge off">ปิดใช้งาน</span>'}</label></td>
+        <td>${escUser(dateText(u.last_sign_in_at))}</td>
+        <td><button class="btn primary" type="button" data-save-user="${u.id}">💾 บันทึก</button></td>
+      </tr>`;
+    }).join('')||'<tr><td colspan="6" class="loading">ไม่พบผู้ใช้งาน</td></tr>';
+    body.querySelectorAll('[data-save-user]').forEach(btn=>btn.onclick=()=>saveUser(btn.dataset.saveUser,btn));
+    body.querySelectorAll('[data-user-active]').forEach(cb=>cb.onchange=()=>{
+      const span=cb.parentElement?.querySelector('.badge');
+      if(span){span.textContent=cb.checked?'ใช้งาน':'ปิดใช้งาน';span.classList.toggle('off',!cb.checked)}
+    });
+  }
+
+  async function loadUsers(){
+    const body=document.querySelector('#userBody');
+    if(body)body.innerHTML='<tr><td colspan="6" class="loading">กำลังโหลดบัญชีผู้ใช้งาน...</td></tr>';
+    try{
+      const data=await callAdminUsers({action:'list'});
+      users=Array.isArray(data.users)?data.users:[];
+      loaded=true;
+      renderUsers();
+      userMsg(`โหลดผู้ใช้งานแล้ว ${users.length} บัญชี`,true);
+    }catch(err){
+      console.error(err);
+      if(body)body.innerHTML='<tr><td colspan="6" class="loading">โหลดข้อมูลไม่สำเร็จ</td></tr>';
+      userMsg('โหลดผู้ใช้งานไม่สำเร็จ: '+(err.message||'เกิดข้อผิดพลาด'));
+    }
+  }
+
+  async function saveUser(id,btn){
+    const row=document.querySelector(`[data-user-row="${CSS.escape(id)}"]`);
+    const original=users.find(x=>x.id===id);
+    if(!row||!original)return;
+    const fullName=row.querySelector('[data-user-name]').value.trim();
+    const role=row.querySelector('[data-user-role]').value;
+    const isActive=row.querySelector('[data-user-active]').checked;
+    if(!fullName){userMsg('กรุณาระบุชื่อผู้ใช้งาน');return}
+    if(!confirm(`บันทึกการเปลี่ยนแปลงบัญชี ${original.email}?\n\nชื่อ: ${fullName}\nสิทธิ์: ${roleText[role]||role}\nสถานะ: ${isActive?'ใช้งาน':'ปิดใช้งาน'}`))return;
+    btn.disabled=true;btn.textContent='กำลังบันทึก...';
+    try{
+      await callAdminUsers({action:'update',id,full_name:fullName,role,is_active:isActive});
+      userMsg('บันทึกข้อมูลผู้ใช้งานเรียบร้อยแล้ว',true);
+      await loadUsers();
+    }catch(err){
+      console.error(err);userMsg('บันทึกไม่สำเร็จ: '+(err.message||'เกิดข้อผิดพลาด'));
+    }finally{btn.disabled=false;btn.textContent='💾 บันทึก'}
+  }
+
+  document.querySelector('#userCreateForm').onsubmit=async e=>{
+    e.preventDefault();
+    const btn=document.querySelector('#createUserBtn');
+    const payload={
+      action:'create',
+      full_name:document.querySelector('#newUserName').value.trim(),
+      email:document.querySelector('#newUserEmail').value.trim(),
+      password:document.querySelector('#newUserPassword').value,
+      role:document.querySelector('#newUserRole').value
+    };
+    if(!confirm(`สร้างบัญชีใหม่?\n\n${payload.full_name}\n${payload.email}\nสิทธิ์: ${roleText[payload.role]||payload.role}`))return;
+    btn.disabled=true;btn.textContent='กำลังสร้าง...';
+    try{
+      await callAdminUsers(payload);
+      e.target.reset();
+      document.querySelector('#newUserRole').value='fireman';
+      userMsg('สร้างบัญชีเรียบร้อยแล้ว สามารถใช้ Email/Password เข้าลิงก์หลักได้ทันที',true);
+      await loadUsers();
+    }catch(err){
+      console.error(err);userMsg('สร้างบัญชีไม่สำเร็จ: '+(err.message||'เกิดข้อผิดพลาด'));
+    }finally{btn.disabled=false;btn.textContent='＋ สร้างบัญชี'}
+  };
+
+  document.querySelector('#userSearch').oninput=renderUsers;
+  document.querySelector('#reloadUsers').onclick=loadUsers;
+
+  tab.onclick=async()=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.tab').forEach(x=>x.classList.add('hidden'));
+    section.classList.remove('hidden');
+    if(!loaded)await loadUsers();
+  };
+})();
