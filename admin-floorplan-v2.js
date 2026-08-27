@@ -62,6 +62,10 @@
 
     function setMsg(t, bad=false){ msg.textContent=t||''; msg.style.color=bad?'#b91c1c':'#6b7280'; }
     function floorValue(){ return $('#fpFloor').value.trim() || 'ชั้น 1'; }
+    function storageFloorKey(value){
+      const ascii=String(value||'').normalize('NFKD').replace(/[^\x00-\x7F]/g,' ').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+      return `floor-${ascii||'plan'}`;
+    }
     function updateStats(){ const c=points.filter(p=>p.status==='checked').length; $('#fpTotal').textContent=points.length; $('#fpChecked').textContent=c; $('#fpPending').textContent=points.length-c; $('#fpPct').textContent=points.length?Math.round(c/points.length*100)+'%':'0%'; }
     async function signedPlanUrl(path){ const r=await db.storage.from('v2-floorplans').createSignedUrl(path,3600); if(r.error)throw r.error; return r.data.signedUrl; }
 
@@ -88,8 +92,8 @@
       if(!file)return;
       if(file.size>10*1024*1024)return setMsg('ไฟล์ใหญ่เกิน 10 MB',true);
       const floor=floorValue(); setMsg('กำลังอัปโหลดแปลนจริง...');
-      const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
-      const safeFloor=floor.replace(/[^a-zA-Z0-9ก-๙_-]+/g,'_');
+      const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+      const safeFloor=storageFloorKey(floor);
       const path=`${safeFloor}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const up=await db.storage.from('v2-floorplans').upload(path,file,{contentType:file.type,upsert:false});
       if(up.error)return setMsg('อัปโหลดไม่สำเร็จ: '+up.error.message,true);
