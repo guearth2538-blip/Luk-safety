@@ -202,3 +202,58 @@
     });
   }
 })();
+
+/* Equipment list sequence numbers: always 1..N for the rows currently shown. */
+(() => {
+  function applyEquipmentSequence() {
+    const table = document.querySelector('#equipment .table-wrap table');
+    const body = document.querySelector('#equipmentBody');
+    if (!table || !body) return;
+
+    const headRow = table.querySelector('thead tr');
+    if (headRow && !headRow.querySelector('[data-equipment-seq-head]')) {
+      const th = document.createElement('th');
+      th.setAttribute('data-equipment-seq-head', '1');
+      th.textContent = 'ลำดับ';
+      th.style.width = '70px';
+      th.style.textAlign = 'center';
+      headRow.prepend(th);
+    }
+
+    const rows = [...body.querySelectorAll('tr')];
+    let sequence = 0;
+    rows.forEach(tr => {
+      const empty = tr.querySelector('td[colspan]');
+      if (empty) {
+        empty.colSpan = 8;
+        return;
+      }
+      sequence += 1;
+      let cell = tr.querySelector('[data-equipment-seq]');
+      if (!cell) {
+        cell = document.createElement('td');
+        cell.setAttribute('data-equipment-seq', '1');
+        cell.style.textAlign = 'center';
+        cell.style.fontWeight = '700';
+        cell.style.color = '#6b7280';
+        tr.prepend(cell);
+      }
+      cell.textContent = sequence.toLocaleString('th-TH');
+    });
+  }
+
+  function setupEquipmentSequence() {
+    const body = document.querySelector('#equipmentBody');
+    if (!body || body.dataset.sequenceReady === '1') return;
+    body.dataset.sequenceReady = '1';
+    const observer = new MutationObserver(() => queueMicrotask(applyEquipmentSequence));
+    observer.observe(body, { childList: true });
+    applyEquipmentSequence();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(setupEquipmentSequence, 50));
+  } else {
+    setTimeout(setupEquipmentSequence, 50);
+  }
+})();
